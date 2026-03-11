@@ -69,39 +69,46 @@ async function scrapeRace(raceId) {
 
       // 行内に「欠」という文字が含まれる場合 isScratched: true
       const isScratched = rowText.includes('欠');
+      
+      // 列ズレの完全吸収: tds.length < 10 の場合に indexOffset = -1 を設定
+      const indexOffset = tds.length < 10 ? -1 : 0;
 
-      const mark = $(tds[0]).text().trim();
-      const bracket = parseInt($(tds[3]).text().trim());
-      const number = parseInt($(tds[4]).text().trim());
+      const mark = indexOffset === 0 ? $(tds[0]).text().trim() : "";
+      const bracket = parseInt($(tds[3 + indexOffset]).text().trim());
+      const number = parseInt($(tds[4 + indexOffset]).text().trim());
       
       // numberがnullまたはNaNの行はスキップ
       if (!number || isNaN(number)) return;
 
-      // td[4]のテキストが数字1〜9なら正常、そうでなければtd[5]にずれている
-      const nameCheck = parseInt($(tds[4]).text().trim());
-      const nameCellText = (!isNaN(nameCheck) && nameCheck >= 1 && nameCheck <= 9)
-        ? $(tds[5]).text().replace(/　/g, ' ').trim()
-        : $(tds[4]).text().replace(/　/g, ' ').trim();
+      // 選手名抽出の堅牢化
+      const nameCellText = $(tds[5 + indexOffset]).text();
+      // 全角スペースを半角化し、さらに連続する空白を1つにまとめてからsplit
+      const textParts = nameCellText.replace(/　/g, ' ').replace(/\s+/g, ' ').trim().split(' ');
       
-      // 空白2つ以上で分割
-      const nameParts = nameCellText.split(/\s{2,}/).map(s => s.trim());
-      const name = nameParts[0];
-      
+      let name = '';
       let pref = null;
       let age = null;
       let term = null;
 
-      if (nameParts.length > 1) {
-        const details = nameParts[1].split('/');
-        pref = (details[0] || '').replace(/\s/g, '').trim() || null;
-        age = parseInt(details[1]) || null;
-        term = parseInt(details[2]) || null;
+      // "/" を含む部分を探し、それより前を名前、それ自体を詳細情報とする
+      const detailIndex = textParts.findIndex(part => part.includes('/'));
+
+      if (detailIndex !== -1) {
+        name = textParts.slice(0, detailIndex).join(' ');
+        const detailParts = textParts[detailIndex].split('/');
+        
+        // 府県データのクレンジング
+        pref = (detailParts[0] || '').replace(/[\s\/]/g, '');
+        age = parseInt(detailParts[1]) || null;
+        term = parseInt(detailParts[2]) || null;
+      } else {
+        name = textParts.join(' ');
       }
 
-      const grade = $(tds[6]).text().trim();
-      const style = $(tds[7]).text().trim();
-      const gear = parseFloat($(tds[8]).text().trim());
-      const score = parseFloat($(tds[9]).text().trim());
+      const grade = $(tds[6 + indexOffset]).text().trim();
+      const style = $(tds[7 + indexOffset]).text().trim();
+      const gear = parseFloat($(tds[8 + indexOffset]).text().trim());
+      const score = parseFloat($(tds[9 + indexOffset]).text().trim());
 
       riders.push({
         mark,

@@ -12,6 +12,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/', (req, res) => res.send('ok'));
+
 app.get('/debug', async (req, res) => {
   const fetch = require('node-fetch');
   const cheerio = require('cheerio');

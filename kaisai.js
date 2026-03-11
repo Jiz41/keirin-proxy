@@ -3,6 +3,24 @@ const cheerio = require('cheerio');
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// prettier-ignore
+const VENUE_MAP = {
+  'hakodate': '函館', 'aomori': '青森', 'iwakitaira': 'いわき平',
+  'yahiko': '弥彦', 'maebashi': '前橋', 'toride': '取手',
+  'utsunomiya': '宇都宮', 'omiya': '大宮', 'seibuen': '西武園',
+  'keiokaku': '京王閣', 'tachikawa': '立川', 'matsudo': '松戸',
+  'chiba': '千葉', 'kawasaki': '川崎', 'hiratsuka': '平塚',
+  'odawara': '小田原', 'ito': '伊東', 'shizuoka': '静岡',
+  'nagoya': '名古屋', 'gifu': '岐阜', 'ogaki': '大垣',
+  'toyohashi': '豊橋', 'toyama': '富山', 'matsusaka': '松阪',
+  'yokkaichi': '四日市', 'fukui': '福井', 'nara': '奈良',
+  'mukomachi': '向日町', 'wakayama': '和歌山', 'kishiwada': '岸和田',
+  'tamano': '玉野', 'hiroshima': '広島', 'hofu': '防府',
+  'takamatsu': '高松', 'kochi': '高知', 'komatsushima': '小松島',
+  'matsuyama': '松山', 'kokura': '小倉', 'kurume': '久留米',
+  'takeo': '武雄', 'sasebo': '佐世保', 'beppu': '別府', 'kumamoto': '熊本'
+};
+
 async function getKaisai(date) {
   const year = date.slice(0, 4);
   const month = date.slice(4, 6);
@@ -22,8 +40,8 @@ async function getKaisai(date) {
     const days = [];
 
     $(el).find('.kaisai-program_table').each((j, table) => {
-      // テーブルのキャプションまたは直前要素からlabelを取得
-      const label = $(table).prev().text().trim() || `${j + 1}日目`;
+      // テーブルのキャプションまたは直前要素からlabelを取得し、空白・改行を除去
+      const label = ($(table).prev().text().trim() || `${j + 1}日目`).replace(/\s+/g, '');
       const races = [];
 
       $(table).find('a').each((k, a) => {
@@ -54,7 +72,7 @@ async function getKaisai(date) {
       }
     });
 
-    venues.push({ name: slug, slug, grade: '', days });
+    venues.push({ name: VENUE_MAP[slug] || slug, slug, grade: '', days });
   });
 
   return { date, venues };
