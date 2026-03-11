@@ -36,7 +36,6 @@ async function scrapeRace(raceId) {
   const body = await response.text();
   const $ = cheerio.load(body);
 
-  // ページタイトルの「○○競輪 レース詳細」から競輪場名を抽出
   const titleText = $('title').text();
   const venueMatch = titleText.match(/(.+)競輪 レース詳細/);
   const venue = venueMatch ? venueMatch[1] : '';
@@ -44,68 +43,61 @@ async function scrapeRace(raceId) {
   const riders = [];
   let raceTable = null;
 
-  // 最初のth列に「予想」を含み、「周回」を含まないテーブルを対象とする
   $('table').each((i, table) => {
       const thText = $(table).find('th').first().text();
       if (thText.includes('予想') && !thText.includes('周回')) {
           raceTable = table;
-          return false; // ループを抜ける
+          return false;
       }
   });
 
   if (raceTable) {
     $(raceTable).find('tbody tr').each((i, el) => {
       const rowText = $(el).text();
-
-      // 「誘導員」という文字を含む行はスキップ
       if (rowText.includes('誘導員')) {
-        return; // 次の行へ
+        return;
       }
 
       const tds = $(el).find('td');
       if (tds.length === 0) {
-        return; // tdがない行はスキップ
+        return;
       }
 
-      // 行内に「欠」という文字が含まれる場合 isScratched: true
-      const isScratched = rowText.includes('欠');
-      
-      // 列ズレの完全吸収: tds.length < 10 の場合に indexOffset = -1 を設定
       const indexOffset = tds.length < 10 ? -1 : 0;
+
+      const number = parseInt($(tds[4 + indexOffset]).text().trim());
+      if (isNaN(number)) {
+        return; // 車番がなければ選手情報ではないのでスキップ
+      }
+
+      // 欠場判定の厳格化: 級班カラムが「欠」の場合に isScratched を true にする
+      const gradeOrStatus = $(tds[6 + indexOffset]).text().trim();
+      const isScratched = gradeOrStatus === '欠';
 
       const mark = indexOffset === 0 ? $(tds[0]).text().trim() : "";
       const bracket = parseInt($(tds[3 + indexOffset]).text().trim());
-      const number = parseInt($(tds[4 + indexOffset]).text().trim());
-      
-      // numberがnullまたはNaNの行はスキップ
-      if (!number || isNaN(number)) return;
 
-      // 選手名抽出の堅牢化
-      const nameCellText = $(tds[5 + indexOffset]).text();
-      // 全角スペースを半角化し、さらに連続する空白を1つにまとめてからsplit
-      const textParts = nameCellText.replace(/　/g, ' ').replace(/\s+/g, ' ').trim().split(' ');
-      
+      // 選手名と詳細情報の抽出ロジックを修正
+      const nameCellText = $(tds[5 + indexOffset]).text().replace(/　/g, ' ').replace(/\s+/g, ' ').trim();
+      const detailMatch = nameCellText.match(/(\S+)\/(\d+)\/(\d+)$/);
+
       let name = '';
       let pref = null;
       let age = null;
       let term = null;
 
-      // "/" を含む部分を探し、それより前を名前、それ自体を詳細情報とする
-      const detailIndex = textParts.findIndex(part => part.includes('/'));
-
-      if (detailIndex !== -1) {
-        name = textParts.slice(0, detailIndex).join(' ');
-        const detailParts = textParts[detailIndex].split('/');
-        
-        // 府県データのクレンジング
-        pref = (detailParts[0] || '').replace(/[\s\/]/g, '');
-        age = parseInt(detailParts[1]) || null;
-        term = parseInt(detailParts[2]) || null;
+      if (detailMatch) {
+        // 詳細情報が見つかった場合、その前を名前として抽出
+        name = nameCellText.substring(0, detailMatch.index).trim();
+        pref = (detailMatch[1] || '').replace(/[\s\/]/g, '');
+        age = parseInt(detailMatch[2]) || null;
+        term = parseInt(detailMatch[3]) || null;
       } else {
-        name = textParts.join(' ');
+        // 詳細情報がない場合、セル全体を名前とする (欠場選手など)
+        name = nameCellText;
       }
 
-      const grade = $(tds[6 + indexOffset]).text().trim();
+      const grade = !isScratched ? gradeOrStatus : '';
       const style = $(tds[7 + indexOffset]).text().trim();
       const gear = parseFloat($(tds[8 + indexOffset]).text().trim());
       const score = parseFloat($(tds[9 + indexOffset]).text().trim());
@@ -120,8 +112,8 @@ async function scrapeRace(raceId) {
         term,
         grade,
         style,
-        gear,
-        score,
+        gear: isNaN(gear) ? null : gear,
+        score: isNaN(score) ? null : score,
         isScratched
       });
     });
