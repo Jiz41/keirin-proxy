@@ -20,16 +20,19 @@ app.get('/debug', async (req, res) => {
   });
   const body = await response.text();
   const $ = cheerio.load(body);
-  
-  // 全クラス名を収集
-  const classes = new Set();
-  $('[class]').each((i, el) => {
-    const cls = $(el).attr('class');
-    if (cls) cls.split(' ').forEach(c => classes.add(c));
+
+  // kaisai-list_contentsの数と中身を確認
+  const result = [];
+  $('.kaisai-list_contents').each((i, el) => {
+    result.push({
+      index: i,
+      html: $.html(el).slice(0, 500)
+    });
   });
-  
+
   res.json({
-    classes: [...classes].sort()
+    count: result.length,
+    items: result
   });
 });
 
