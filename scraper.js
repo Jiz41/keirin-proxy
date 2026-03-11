@@ -65,46 +65,55 @@ async function scrapeRace(raceId) {
 
       const indexOffset = tds.length < 10 ? -1 : 0;
 
-      const number = parseInt($(tds[4 + indexOffset]).text().trim());
-      if (isNaN(number)) {
-        return; // 車番がなければ選手情報ではないのでスキップ
+      const numberText = $(tds[4 + indexOffset]).text().trim();
+      if (!numberText) {
+          return;
       }
-
-      // 欠場判定の厳格化: 級班カラムが「欠」の場合に isScratched を true にする
-      const gradeOrStatus = $(tds[6 + indexOffset]).text().trim();
-      const isScratched = gradeOrStatus === '欠';
-
-      const mark = indexOffset === 0 ? $(tds[0]).text().trim() : "";
-      const bracket = parseInt($(tds[3 + indexOffset]).text().trim());
-
-      // 選手名と詳細情報の抽出ロジックを修正
-      const nameCellText = $(tds[5 + indexOffset]).text().replace(/　/g, ' ').replace(/\s+/g, ' ').trim();
-      const detailMatch = nameCellText.match(/(\S+)\/(\d+)\/(\d+)$/);
+      const number = parseInt(numberText);
+      if (isNaN(number)) {
+        return;
+      }
+      
+      const isScratched = rowText.includes('（欠車）') || rowText.includes('欠');
 
       let name = '';
       let pref = null;
       let age = null;
       let term = null;
+      let grade = '';
+      let style = '';
+      let gear = null;
+      let score = null;
+      
+      const mark = indexOffset === 0 ? $(tds[0]).text().trim() : "";
+      const bracket = parseInt($(tds[3 + indexOffset]).text().trim());
+
+      const nameCellText = $(tds[5 + indexOffset]).text().replace(/　/g, ' ').trim();
+      
+      const detailRegex = /([^\s/]+(?:\s[^\s/]+)?)\s*\/\s*(\d+)\s*\/\s*(\d+)/;
+      const detailMatch = nameCellText.match(detailRegex);
 
       if (detailMatch) {
-        // 詳細情報が見つかった場合、その前を名前として抽出
-        name = nameCellText.substring(0, detailMatch.index).trim();
-        pref = (detailMatch[1] || '').replace(/[\s\/]/g, '');
-        age = parseInt(detailMatch[2]) || null;
-        term = parseInt(detailMatch[3]) || null;
+          name = nameCellText.substring(0, detailMatch.index).replace(/\s+/g, ' ').trim();
+          pref = (detailMatch[1] || '').replace(/\s/g, '');
+          age = parseInt(detailMatch[2]) || null;
+          term = parseInt(detailMatch[3]) || null;
       } else {
-        // 詳細情報がない場合、セル全体を名前とする (欠場選手など)
-        name = nameCellText;
+          name = nameCellText.replace(/\s+/g, ' ').trim();
       }
-
-      const grade = !isScratched ? gradeOrStatus : '';
-      const style = $(tds[7 + indexOffset]).text().trim();
-      const gear = parseFloat($(tds[8 + indexOffset]).text().trim());
-      const score = parseFloat($(tds[9 + indexOffset]).text().trim());
+      
+      if (!isScratched) {
+          grade = $(tds[6 + indexOffset]).text().trim();
+          style = $(tds[7 + indexOffset]).text().trim();
+          const gearVal = parseFloat($(tds[8 + indexOffset]).text().trim());
+          const scoreVal = parseFloat($(tds[9 + indexOffset]).text().trim());
+          gear = isNaN(gearVal) ? null : gearVal;
+          score = isNaN(scoreVal) ? null : scoreVal;
+      }
 
       riders.push({
         mark,
-        bracket,
+        bracket: isNaN(bracket) ? null : bracket,
         number,
         name,
         pref,
@@ -112,8 +121,8 @@ async function scrapeRace(raceId) {
         term,
         grade,
         style,
-        gear: isNaN(gear) ? null : gear,
-        score: isNaN(score) ? null : score,
+        gear,
+        score,
         isScratched
       });
     });
