@@ -71,12 +71,12 @@ async function scrapeRace(raceId) {
       const isScratched = rowText.includes('欠');
 
       const mark = $(tds[0]).text().trim();
-      const bracket = parseInt($(tds[2]).text().trim());
-      const number = parseInt($(tds[3]).text().trim());
+      const bracket = parseInt($(tds[3]).text().trim());
+      const number = parseInt($(tds[4]).text().trim());
       
       // 選手名・府県/年齢/期別のパース
       // 全角スペースを半角に正規化
-      const nameCellText = $(tds[4]).text().replace(/　/g, ' ').trim();
+      const nameCellText = $(tds[5]).text().replace(/　/g, ' ').trim();
       
       // 空白2つ以上で分割
       const nameParts = nameCellText.split(/\s{2,}/).map(s => s.trim());
@@ -93,10 +93,10 @@ async function scrapeRace(raceId) {
         term = parseInt(details[2]) || null;
       }
 
-      const grade = $(tds[5]).text().trim();
-      const style = $(tds[6]).text().trim();
-      const gear = parseFloat($(tds[7]).text().trim());
-      const score = parseFloat($(tds[8]).text().trim());
+      const grade = $(tds[6]).text().trim();
+      const style = $(tds[7]).text().trim();
+      const gear = parseFloat($(tds[8]).text().trim());
+      const score = parseFloat($(tds[9]).text().trim());
 
       riders.push({
         mark,
