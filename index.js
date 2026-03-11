@@ -15,29 +15,21 @@ app.use((req, res, next) => {
 app.get('/debug', async (req, res) => {
   const fetch = require('node-fetch');
   const cheerio = require('cheerio');
-  const response = await fetch('https://keirin.kdreams.jp/kaisai/2026/03/11/', {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; keirin-proxy/1.0)' }
-  });
+  const response = await fetch(
+    'https://keirin.kdreams.jp/komatsushima/racedetail/7320260310020001/',
+    { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; keirin-proxy/1.0)' } }
+  );
   const body = await response.text();
   const $ = cheerio.load(body);
 
   const result = [];
-  $('.kaisai-list_contents').each((i, el) => {
-    const days = [];
-    $(el).find('.kaisai-list_nav-list > li').each((j, li) => {
-      const label = $(li).find('.tab a').text().trim();
-      const links = [];
-      // This is a correction based on re-evaluating the HTML structure.
-      // The race links are not in a sub-nav but in the associated panel.
-      const panelId = $(li).find('.tab a').attr('href');
-      if (panelId) {
-        $(el).find(panelId).find('.kaisai-program_table a[href*="/racedetail/"]').each((k, a) => {
-          links.push($(a).attr('href'));
-        });
-      }
-      days.push({ label, links });
+  $('table').each((i, table) => {
+    const firstTh = $(table).find('th').first().text().trim();
+    result.push({
+      index: i,
+      firstTh,
+      rowCount: $(table).find('tbody tr').length
     });
-    result.push({ index: i, days });
   });
 
   res.json(result);
