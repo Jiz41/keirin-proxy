@@ -22,17 +22,26 @@ app.get('/debug', async (req, res) => {
   const body = await response.text();
   const $ = cheerio.load(body);
 
-  const result = [];
+  let raceTable = null;
   $('table').each((i, table) => {
-    const firstTh = $(table).find('th').first().text().trim();
-    result.push({
-      index: i,
-      firstTh,
-      rowCount: $(table).find('tbody tr').length
-    });
+    const thText = $(table).find('th').first().text().trim();
+    if (thText.includes('予想') && !thText.includes('周回')) {
+      raceTable = table;
+      return false;
+    }
   });
 
-  res.json(result);
+  const rows = [];
+  $(raceTable).find('tbody tr').each((i, el) => {
+    const tds = $(el).find('td');
+    const tdTexts = [];
+    tds.each((j, td) => {
+      tdTexts.push($(td).text().replace(/\s+/g, ' ').trim().slice(0, 30));
+    });
+    rows.push({ rowIndex: i, tdCount: tds.length, tds: tdTexts });
+  });
+
+  res.json(rows);
 });
 
 app.get('/kaisai', async (req, res) => {
