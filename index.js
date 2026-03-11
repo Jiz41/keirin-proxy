@@ -21,19 +21,26 @@ app.get('/debug', async (req, res) => {
   const body = await response.text();
   const $ = cheerio.load(body);
 
-  // kaisai-list_contentsの数と中身を確認
   const result = [];
   $('.kaisai-list_contents').each((i, el) => {
-    result.push({
-      index: i,
-      html: $.html(el).slice(0, 500)
+    const days = [];
+    $(el).find('.kaisai-list_nav-list > li').each((j, li) => {
+      const label = $(li).find('.tab a').text().trim();
+      const links = [];
+      // This is a correction based on re-evaluating the HTML structure.
+      // The race links are not in a sub-nav but in the associated panel.
+      const panelId = $(li).find('.tab a').attr('href');
+      if (panelId) {
+        $(el).find(panelId).find('.kaisai-program_table a[href*="/racedetail/"]').each((k, a) => {
+          links.push($(a).attr('href'));
+        });
+      }
+      days.push({ label, links });
     });
+    result.push({ index: i, days });
   });
 
-  res.json({
-    count: result.length,
-    items: result
-  });
+  res.json(result);
 });
 
 app.get('/kaisai', async (req, res) => {
