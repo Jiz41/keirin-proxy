@@ -21,56 +21,82 @@ async function getKaisai(date) {
 
   const venues = [];
 
-  $('.kaisai-list_contents').each((i, el) => {
-    const venueEl = $(el);
+  // 各開催場は .kaisai-list_contents で囲まれている
+  $('.kaisai-list_contents').each((i, venueContentEl) => {
+    const venueEl = $(venueContentEl);
 
-    const name = venueEl.find('h3.name').text().trim() || venueEl.find('h3').text().trim();
-    const grade = venueEl.find('.icon_grade').text().trim();
-    
-    const link = venueEl.find('a').attr('href');
-    let slug = null;
-    if (link) {
-        // e.g., /race/maebashi/kaisai-info/F1/
-        const pathParts = link.split('/').filter(p => p.length > 0);
-        if (pathParts[0] === 'race' && pathParts.length > 1) {
-            slug = pathParts[1];
+    // まずは slug を探す。これがないと始まらない
+    let slug = '';
+    const firstRaceHref = venueEl.find('a[href*="/racedetail/"]').first().attr('href');
+    if (firstRaceHref) {
+        // 例: /iwakitaira/racedetail/1320260309010001/
+        const parts = firstRaceHref.split('/').filter(p => p);
+        if(parts.length > 1) {
+            slug = parts[0];
         }
+    }
+
+    if (!slug) {
+      return; // slugが取れないブロックはスキップ
+    }
+
+    // 場名とグレードを取得
+    // .kaisai-list_contents の直前の兄弟要素に存在する可能性
+    const headerEl = venueEl.prev('.kaisai-list_header');
+    let name = '';
+    let grade = '';
+
+    if (headerEl.length) {
+      name = headerEl.find('h2.name').text().trim() || headerEl.find('h2').text().trim();
+      grade = headerEl.find('.icon_grade').text().trim();
+    }
+
+    // ヘッダーになければコンテンツ内を探す
+    if (!grade) {
+        grade = venueEl.find('.icon_grade').text().trim();
+    }
+    
+    // 名前が取れなければslugを流用
+    if (!name) {
+      name = slug;
     }
 
     const days = [];
-    const programTable = venueEl.find('.kaisai-program_table');
-    if (programTable.length > 0) {
+    
+    // 日次タブのラベルを取得
+    const dayLabels = venueEl.find('.kaisai-list_nav-list > li .tab > a').map((i, el) => $(el).text().trim()).get();
+    
+    // レース一覧テーブルを取得
+    const raceTables = venueEl.find('.kaisai-program_table');
+
+    // タブとテーブルを添字で関連付ける
+    raceTables.each((index, table) => {
+        const tableEl = $(table);
+        const label = dayLabels[index] || `Day ${index + 1}`; // ラベルが取れなかった場合のフォールバック
+        
         const races = [];
-        programTable.find('td a').each((k, raceEl) => {
-            const raceLink = $(raceEl);
-            const raceHref = raceLink.attr('href');
-            if (raceHref && raceHref.includes('/racedetail/')) {
-                const parts = raceHref.split('/');
-                const raceIdIndex = parts.indexOf('racedetail') + 1;
-                if (parts.length > raceIdIndex && parts[raceIdIndex]) {
-                    const raceId = parts[raceIdIndex];
-                    const raceNo = parseInt(raceLink.text().trim().replace('R', ''), 10);
-                    if (raceId && !isNaN(raceNo)) {
-                        races.push({ raceNo, raceId });
-                    }
+        tableEl.find('td a[href*="/racedetail/"]').each((i, raceLink) => {
+            const href = $(raceLink).attr('href');
+            // 例: /iwakitaira/racedetail/1320260309010001/
+            const parts = href.split('/').filter(p => p);
+            if (parts.length >= 3 && parts[1] === 'racedetail') {
+                const raceId = parts[2];
+                const raceNo = parseInt(raceId.slice(-2), 10);
+                if (raceId && !isNaN(raceNo)) {
+                    races.push({ raceNo, raceId });
                 }
             }
         });
-        
+
         if (races.length > 0) {
-            // The structure from the original code had a 'day' label (e.g., "初日").
-            // A selector for this was not provided in the update instructions.
-            // Using a placeholder label for now.
             days.push({
-                label: '開催日',
+                label,
                 races: races.sort((a,b) => a.raceNo - b.raceNo)
             });
         }
-    }
+    });
     
-    if (name && slug) {
-        venues.push({ name, slug, grade, days });
-    }
+    venues.push({ name, slug, grade, days });
   });
 
   return { date, venues };
