@@ -74,9 +74,14 @@ async function scrapeRace(raceId) {
       const bracket = parseInt($(tds[3]).text().trim());
       const number = parseInt($(tds[4]).text().trim());
       
-      // 選手名・府県/年齢/期別のパース
-      // 全角スペースを半角に正規化
-      const nameCellText = $(tds[5]).text().replace(/　/g, ' ').trim();
+      // numberがnullまたはNaNの行はスキップ
+      if (!number || isNaN(number)) return;
+
+      // td[4]のテキストが数字1〜9なら正常、そうでなければtd[5]にずれている
+      const nameCheck = parseInt($(tds[4]).text().trim());
+      const nameCellText = (!isNaN(nameCheck) && nameCheck >= 1 && nameCheck <= 9)
+        ? $(tds[5]).text().replace(/　/g, ' ').trim()
+        : $(tds[4]).text().replace(/　/g, ' ').trim();
       
       // 空白2つ以上で分割
       const nameParts = nameCellText.split(/\s{2,}/).map(s => s.trim());
