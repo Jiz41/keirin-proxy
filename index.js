@@ -12,6 +12,15 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get('/debug', async (req, res) => {
+  const fetch = require('node-fetch');
+  const response = await fetch('https://keirin.kdreams.jp/kaisai/2026/03/11/', {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; keirin-proxy/1.0)' }
+  });
+  const body = await response.text();
+  res.send(body);
+});
+
 app.get('/kaisai', async (req, res) => {
   const { date } = req.query;
   if (!date) {
