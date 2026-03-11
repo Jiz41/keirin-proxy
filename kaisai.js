@@ -21,17 +21,21 @@ async function getKaisai(date) {
   $('.kaisai-list_contents').each((i, el) => {
     const days = [];
 
-    $(el).find('.kaisai-list_nav-list > li').each((j, li) => {
-      const label = $(li).find('.tab a').first().text().trim();
+    $(el).find('.kaisai-program_table').each((j, table) => {
+      // テーブルのキャプションまたは直前要素からlabelを取得
+      const label = $(table).prev().text().trim() || `${j + 1}日目`;
       const races = [];
 
-      $(li).find('a').each((k, a) => {
+      $(table).find('a').each((k, a) => {
         const href = $(a).attr('href') || '';
         if (href.includes('/racedetail/')) {
           const parts = href.split('/');
           const raceId = parts[parts.length - 2];
           const raceNo = parseInt(raceId.slice(-2), 10);
-          races.push({ raceNo, raceId });
+          // 重複除去
+          if (!races.find(r => r.raceId === raceId)) {
+            races.push({ raceNo, raceId });
+          }
         }
       });
 
