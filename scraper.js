@@ -60,25 +60,23 @@ async function scrapeRace(raceId) {
       }
 
       const tds = $(el).find('td');
-      // セルが全くない行はスキップ
       if (tds.length === 0) {
         return;
       }
-
+      
+      const isShortRace = tds.length < 10;
+      const numSel = isShortRace ? '.ct04' : '.ct05';
       let number = null;
       
-      // 車番の取得を試みる (固定インデックス)
-      const indexOffset = tds.length < 10 ? -1 : 0;
-      const numberCellIndex = 4 + indexOffset;
-      if (tds[numberCellIndex]) {
-          const numText = $(tds[numberCellIndex]).text().trim();
-          const parsedNum = parseInt(numText, 10);
-          if (!isNaN(parsedNum) && parsedNum > 0 && parsedNum < 10) {
-              number = parsedNum;
-          }
+      const numText = $(el).find(numSel).text().trim();
+      if (numText) {
+        const parsedNum = parseInt(numText, 10);
+        if (!isNaN(parsedNum) && parsedNum > 0 && parsedNum < 10) {
+            number = parsedNum;
+        }
       }
-      
-      // 固定インデックスで見つからない場合のフォールバック (全セル走査)
+
+      // クラス名で取得できない場合のフォールバック
       if (number === null) {
           tds.each((j, td) => {
               const cellText = $(td).text().trim();
@@ -88,45 +86,37 @@ async function scrapeRace(raceId) {
               }
           });
       }
-
-      // 車番が見つからない場合は、選手情報ではないと判断しスキップ
+      
+      // どうしても車番が見つからない行はスキップ
       if (number === null) {
-          return;
+        return;
       }
 
       const isScratched = rowText.includes('（欠車）') || rowText.includes('欠');
 
       let rider = {
-          mark: "",
-          bracket: null,
-          number: number,
-          name: '',
-          pref: null,
-          age: null,
-          term: null,
-          grade: '',
-          style: '',
-          gear: null,
-          score: null,
-          isScratched: isScratched
+          mark: "", bracket: null, number: number, name: '',
+          pref: null, age: null, term: null, grade: '', style: '',
+          gear: null, score: null, isScratched: isScratched
       };
 
       try {
-        const nameCellIndex = 5 + indexOffset;
-        const nameCellText = tds[nameCellIndex] ? $(tds[nameCellIndex]).text().replace(/　/g, ' ').trim() : '';
+        const nameSel = isShortRace ? '.ct05' : '.ct06';
+        const gradeSel = isShortRace ? '.ct06' : '.ct07';
+        const styleSel = isShortRace ? '.ct07' : '.ct08';
+        const gearSel = isShortRace ? '.ct08' : '.ct09';
+        const scoreSel = isShortRace ? '.ct09' : '.ct10';
+        const bracketSel = isShortRace ? '.ct03' : '.ct04';
+        const markSel = isShortRace ? null : '.ct01';
 
-        const bracketCellIndex = 3 + indexOffset;
-        if(tds[bracketCellIndex]){
-            const bracket = parseInt($(tds[bracketCellIndex]).text().trim());
-            rider.bracket = isNaN(bracket) ? null : bracket;
-        }
+        const nameCellText = $(el).find(nameSel).text().replace(/\s+/g, ' ').trim();
+        const bracketText = $(el).find(bracketSel).text().trim();
+        rider.bracket = parseInt(bracketText, 10) || null;
 
         if (isScratched) {
-            // 欠場選手の場合、名前など取得できる情報だけ取得
             rider.name = nameCellText.replace('（欠車）', '').trim();
         } else {
-            // 通常の選手情報
-            rider.mark = indexOffset === 0 && tds[0] ? $(tds[0]).text().trim() : "";
+            rider.mark = markSel ? ($(el).find(markSel).text().trim() || "") : "";
             
             const detailRegex = /([^\s/]+(?:\s[^\s/]+)?)\s*\/\s*(\d+)\s*\/\s*(\d+)/;
             const detailMatch = nameCellText.match(detailRegex);
@@ -134,18 +124,16 @@ async function scrapeRace(raceId) {
             if (detailMatch) {
                 rider.name = nameCellText.substring(0, detailMatch.index).replace(/\s+/g, ' ').trim();
                 rider.pref = (detailMatch[1] || '').replace(/\s/g, ''); // "香 川" -> "香川"
-                rider.age = parseInt(detailMatch[2]) || null;
-                rider.term = parseInt(detailMatch[3]) || null;
+                rider.age = parseInt(detailMatch[2], 10) || null;
+                rider.term = parseInt(detailMatch[3], 10) || null;
             } else {
-                rider.name = nameCellText.replace(/\s+/g, ' ').trim();
+                rider.name = nameCellText;
             }
             
-            rider.grade = tds[6 + indexOffset] ? $(tds[6 + indexOffset]).text().trim() : '';
-            rider.style = tds[7 + indexOffset] ? $(tds[7 + indexOffset]).text().trim() : '';
-            const gearVal = parseFloat(tds[8 + indexOffset] ? $(tds[8 + indexOffset]).text().trim() : '');
-            rider.gear = isNaN(gearVal) ? null : gearVal;
-            const scoreVal = parseFloat(tds[9 + indexOffset] ? $(tds[9 + indexOffset]).text().trim() : '');
-            rider.score = isNaN(scoreVal) ? null : scoreVal;
+            rider.grade = $(el).find(gradeSel).text().trim();
+            rider.style = $(el).find(styleSel).text().trim();
+            rider.gear = parseFloat($(el).find(gearSel).text().trim()) || null;
+            rider.score = parseFloat($(el).find(scoreSel).text().trim()) || null;
         }
       } catch (e) {
           console.error(`Error parsing row for rider #${number} in race ${raceId}. Pushing partial data. Error: ${e.message}`);
