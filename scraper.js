@@ -44,10 +44,10 @@ async function scrapeRace(raceId) {
   const riders = [];
   let raceTable = null;
 
-  // 最初のth列に「予 想」という文字を含むテーブルを対象とする
+  // 最初のth列に「予想」を含み、「周回」を含まないテーブルを対象とする
   $('table').each((i, table) => {
       const thText = $(table).find('th').first().text();
-      if (thText.includes('予 想')) {
+      if (thText.includes('予想') && !thText.includes('周回')) {
           raceTable = table;
           return false; // ループを抜ける
       }
