@@ -14,11 +14,23 @@ app.use((req, res, next) => {
 
 app.get('/debug', async (req, res) => {
   const fetch = require('node-fetch');
+  const cheerio = require('cheerio');
   const response = await fetch('https://keirin.kdreams.jp/kaisai/2026/03/11/', {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; keirin-proxy/1.0)' }
   });
   const body = await response.text();
-  res.send(body);
+  const $ = cheerio.load(body);
+  
+  // 全クラス名を収集
+  const classes = new Set();
+  $('[class]').each((i, el) => {
+    const cls = $(el).attr('class');
+    if (cls) cls.split(' ').forEach(c => classes.add(c));
+  });
+  
+  res.json({
+    classes: [...classes].sort()
+  });
 });
 
 app.get('/kaisai', async (req, res) => {
