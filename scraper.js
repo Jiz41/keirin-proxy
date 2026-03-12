@@ -155,7 +155,17 @@ async function scrapeRace(raceId) {
     });
   }
 
-  return { raceId, venue, riders };
+  const grades = riders.filter(r => !r.isScratched).map(r => r.grade);
+let series = 'A級';
+if (grades.some(g => g === 'L1')) {
+  series = 'ガールズ';
+} else if (grades.some(g => g && g.startsWith('S'))) {
+  series = 'S級';
+} else if (grades.some(g => g === 'A3')) {
+  series = 'A級チャレンジ';
+}
+
+return { raceId, venue, series, riders };
 }
 
 module.exports = { scrapeRace };
