@@ -68,7 +68,7 @@ async function scrapeRace(raceId) {
       let number = null;
       
       // 車番の取得を試みる (固定インデックス)
-      const indexOffset = tds.length < 10 ? -1 : 0;
+      const indexOffset = tds.length <= 22 ? -1 : 0;
       const numberCellIndex = 4 + indexOffset;
       if (tds[numberCellIndex]) {
           const numText = $(tds[numberCellIndex]).text().trim();
@@ -123,7 +123,8 @@ async function scrapeRace(raceId) {
 
         if (isScratched) {
             // 欠場選手の場合、名前など取得できる情報だけ取得
-            rider.name = nameCellText.replace('（欠車）', '').trim();
+            rider.name = nameCellText.replace('（欠車）', '').replace(/[
+	]/g, '').trim();
         } else {
             // 通常の選手情報
             rider.mark = indexOffset === 0 && tds[0] ? $(tds[0]).text().trim() : "";
