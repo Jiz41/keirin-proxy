@@ -72,7 +72,17 @@ async function getKaisai(date) {
       }
     });
 
-    venues.push({ name: VENUE_MAP[slug] || slug, slug, grade: '', days });
+    // gradeを取得（Ｇ１/Ｇ２/Ｇ３/Ｆ１/Ｆ２）
+    let grade = '';
+    const headingText = $(el).find('h3, h2').first().text();
+    const gradeMatch = headingText.match(/[GＧ][123１２３]|[FＦ][12１２]/);
+    if (gradeMatch) {
+      grade = gradeMatch[0]
+        .replace(/Ｇ/g, 'G').replace(/Ｆ/g, 'F')
+        .replace(/１/g, '1').replace(/２/g, '2').replace(/３/g, '3');
+    }
+
+    venues.push({ name: VENUE_MAP[slug] || slug, slug, grade: grade, days });
   });
 
   return { date, venues };
