@@ -36,6 +36,23 @@ async function getKaisai(date) {
 
   const venues = [];
 
+  // ナビリンクから slug→grade マップを作成
+  // 例: "取手Ｇ３" → { toride: 'G3' }
+  const gradeMap = {};
+  $('a[href^="#k"]').each((i, a) => {
+    const text = $(a).text().trim();
+    const gradeMatch = text.match(/[GＧ][123１２３]|[FＦ][12１２]/);
+    if (gradeMatch) {
+      const grade = gradeMatch[0]
+        .replace(/Ｇ/g, 'G').replace(/Ｆ/g, 'F')
+        .replace(/１/g, '1').replace(/２/g, '2').replace(/３/g, '3');
+      // テキストから場名を除いた残りがgradeなので、slug取得は venues.push時に使う
+      // ここではhref="#k23"などの数字コードは使えないのでテキストベースで保持
+      const venueName = text.replace(/[GＧFＦ][123１２３]/g, '').trim();
+      gradeMap[venueName] = grade;
+    }
+  });
+
   $('.kaisai-list_contents').each((i, el) => {
     const days = [];
 
@@ -72,15 +89,8 @@ async function getKaisai(date) {
       }
     });
 
-    // gradeを取得（Ｇ１/Ｇ２/Ｇ３/Ｆ１/Ｆ２）
-    let grade = '';
-    const headingText = $(el).find('h3, h2').first().text();
-    const gradeMatch = headingText.match(/[GＧ][123１２３]|[FＦ][12１２]/);
-    if (gradeMatch) {
-      grade = gradeMatch[0]
-        .replace(/Ｇ/g, 'G').replace(/Ｆ/g, 'F')
-        .replace(/１/g, '1').replace(/２/g, '2').replace(/３/g, '3');
-    }
+    const jaName = VENUE_MAP[slug] || slug;
+    const grade = gradeMap[jaName] || '';
 
     venues.push({ name: VENUE_MAP[slug] || slug, slug, grade: grade, days });
   });
