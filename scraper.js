@@ -123,8 +123,7 @@ async function scrapeRace(raceId) {
 
         if (isScratched) {
             // 欠場選手の場合、名前など取得できる情報だけ取得
-            rider.name = nameCellText.replace('（欠車）', '').replace(/[
-	]/g, '').trim();
+            rider.name = nameCellText.replace('（欠車）', '').replace(/\s+/g, ' ').trim();
         } else {
             // 通常の選手情報
             rider.mark = indexOffset === 0 && tds[0] ? $(tds[0]).text().trim() : "";
