@@ -1,6 +1,7 @@
 const express = require('express');
 const { getKaisai } = require('./kaisai');
 const { scrapeRace } = require('./scraper');
+const { getVenueMap } = require('./venueManager.js');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -74,4 +75,5 @@ app.get('/race', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
+  getVenueMap(); // fire and forget でウォームアップ開始
 });
