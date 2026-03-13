@@ -20,6 +20,25 @@ const VENUE_MAP = {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+function resolveStyle(kimatete) {
+  const nige  = kimatete['逃'] || 0;
+  const maku  = kimatete['捲'] || 0;
+  const sashi = kimatete['差'] || 0;
+  const ma    = kimatete['マ'] || 0;
+
+  const groups = [
+    { value: '逃', score: nige },
+    { value: '自', score: maku },
+    { value: '追', score: Math.max(sashi, ma) },
+  ];
+
+  groups.sort((a, b) => b.score - a.score);
+
+  if (groups[0].score === 0) return { value: null, warn: true };
+  if (groups[0].score === groups[1].score) return { value: null, warn: true };
+  return { value: groups[0].value, warn: false };
+}
+
 async function scrapeRace(raceId) {
   const venueCode = raceId.slice(0, 2);
   const slug = VENUE_MAP[venueCode];
@@ -109,7 +128,8 @@ async function scrapeRace(raceId) {
           age: null,
           term: null,
           grade: '',
-          style: '',
+          style: null,
+          styleWarn: false,
           gear: null,
           score: null,
           isScratched: isScratched
@@ -145,7 +165,19 @@ async function scrapeRace(raceId) {
             }
             
             rider.grade = tds[6 + indexOffset] ? $(tds[6 + indexOffset]).text().trim() : '';
-            rider.style = tds[7 + indexOffset] ? $(tds[7 + indexOffset]).text().trim() : '';
+            
+            const kimatete = {
+              '逃': parseInt($(tds[12 + indexOffset]).text().trim(), 10) || 0,
+              '捲': parseInt($(tds[13 + indexOffset]).text().trim(), 10) || 0,
+              '差': parseInt($(tds[14 + indexOffset]).text().trim(), 10) || 0,
+              'マ': parseInt($(tds[15 + indexOffset]).text().trim(), 10) || 0,
+            };
+            const styleResult = resolveStyle(kimatete);
+            rider.style = styleResult.value;
+            if (styleResult.warn) {
+              rider.styleWarn = true;
+            }
+
             const gearVal = parseFloat(tds[8 + indexOffset] ? $(tds[8 + indexOffset]).text().trim() : '');
             rider.gear = isNaN(gearVal) ? null : gearVal;
             const scoreVal = parseFloat(tds[9 + indexOffset] ? $(tds[9 + indexOffset]).text().trim() : '');
@@ -160,16 +192,16 @@ async function scrapeRace(raceId) {
   }
 
   const grades = riders.filter(r => !r.isScratched).map(r => r.grade);
-let series = 'A級';
-if (grades.some(g => g === 'L1')) {
-  series = 'ガールズ';
-} else if (grades.some(g => g && g.startsWith('S'))) {
-  series = 'S級';
-} else if (grades.some(g => g === 'A3')) {
-  series = 'A級チャレンジ';
-}
+  let series = 'A級';
+  if (grades.some(g => g === 'L1')) {
+    series = 'ガールズ';
+  } else if (grades.some(g => g && g.startsWith('S'))) {
+    series = 'S級';
+  } else if (grades.some(g => g === 'A3')) {
+    series = 'A級チャレンジ';
+  }
 
-return { raceId, venue, series, riders };
+  return { raceId, venue, series, riders };
 }
 
 module.exports = { scrapeRace };
