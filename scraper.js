@@ -54,7 +54,7 @@ async function getOdds(raceId, type) {
 }
 
 async function scrapeRace(raceId) {
-  const venueCode = raceId.slice(2, 4);
+  const venueCode = raceId.substring(0, 2);
   const venue = VENUE_MAP[venueCode];
   if (!venue) {
     throw new Error(`Invalid venue code: ${venueCode}`);
