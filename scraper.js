@@ -11,7 +11,7 @@ const VENUE_MAP = {
   '41': 'nagoya', '42': 'gifu', '43': 'ogaki',
   '44': 'toyohashi', '45': 'toyama', '46': 'matsusaka',
   '47': 'yokkaichi', '51': 'fukui', '52': 'nara',
-  '53': 'mukomachi', '54': 'wakayama', '55': 'kishiwada',
+  '53': 'mukomachi', '54': 'kishiwada', '55': 'wakayama',
   '61': 'tamano', '62': 'hiroshima', '63': 'hofu',
   '71': 'takamatsu', '72': 'kochi', '73': 'komatsushima',
   '74': 'matsuyama', '81': 'kokura', '82': 'kurume',
