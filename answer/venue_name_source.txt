@@ -1,0 +1,39 @@
+## `kaisai.js`における日本語場名の取得元
+
+`kaisai.js`内の日本語の場名（例: 大垣、豊橋）は、ファイルの上部で定義されている`VENUE_MAP`という定数（オブジェクト）から取得されています。
+
+### 定義箇所
+
+`kaisai.js`の7行目から22行目にかけて、`VENUE_MAP`が定義されています。これは、URLで使われるローマ字の**スラッグ**（例: `ogaki`）をキーとし、対応する**日本語の場名**（例: `大垣`）を値とするマップです。
+
+```javascript
+// kaisai.js L7-L22
+// prettier-ignore
+const VENUE_MAP = {
+  'hakodate': '函館', 'aomori': '青森', 'iwakitaira': 'いわき平',
+  'yahiko': '弥彦', 'maebashi': '前橋', 'toride': '取手',
+  'utsunomiya': '宇都宮', 'omiya': '大宮', 'seibuen': '西武園',
+  'keiokaku': '京王閣', 'tachikawa': '立川', 'matsudo': '松戸',
+  'chiba': '千葉', 'kawasaki': '川崎', 'hiratsuka': '平塚',
+  'odawara': '小田原', 'ito': '伊東', 'shizuoka': '静岡',
+  'nagoya': '名古屋', 'gifu': '岐阜', 'ogaki': '大垣',
+  'toyohashi': '豊橋', 'toyama': '富山', 'matsusaka': '松阪',
+  'yokkaichi': '四日市', 'fukui': '福井', 'nara': '奈良',
+  'mukomachi': '向日町', 'wakayama': '和歌山', 'kishiwada': '岸和田',
+  'tamano': '玉野', 'hiroshima': '広島', 'hofu': '防府',
+  'takamatsu': '高松', 'kochi': '高知', 'komatsushima': '小松島',
+  'matsuyama': '松山', 'kokura': '小倉', 'kurume': '久留米',
+  'takeo': '武雄', 'sasebo': '佐世保', 'beppu': '別府', 'kumamoto': '熊本'
+};
+```
+
+### 使用箇所
+
+スクレイピング処理の後半（97行目と99行目）で、取得した`slug`をこの`VENUE_MAP`に渡して、日本語の場名を取得し、最終的なデータ構造に格納しています。
+
+```javascript
+// kaisai.js L97, L99
+const jaName = VENUE_MAP[slug] || slug;
+// ...
+venues.push({ name: VENUE_MAP[slug] || slug, slug, grade: grade, days });
+```
