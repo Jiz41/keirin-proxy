@@ -28,13 +28,23 @@ async function updateVenueMap() {
         }
 
         const results = await Promise.all(promises);
-        const allKaisai = results.flat();
 
-        allKaisai.forEach(kaisai => {
-            if (kaisai && kaisai.raceId && kaisai.slug) {
-                const venueCode = kaisai.raceId.substring(0, 2);
-                newVenueMap[venueCode] = kaisai.slug;
-            }
+        // 階層構造を正しくパースしてVENUE_MAPを構築する
+        results.forEach(result => {
+            if (!result || !result.venues) return;
+            result.venues.forEach(venue => {
+                if (!venue.slug || !venue.days) return;
+                venue.days.forEach(day => {
+                    if (!day.races) return;
+                    day.races.forEach(race => {
+                        if (!race.raceId) return;
+                        const venueCode = String(race.raceId).substring(0, 2);
+                        if (!newVenueMap[venueCode]) {
+                            newVenueMap[venueCode] = venue.slug;
+                        }
+                    });
+                });
+            });
         });
 
         if (Object.keys(newVenueMap).length > 0) {
