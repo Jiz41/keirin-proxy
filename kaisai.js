@@ -61,8 +61,19 @@ async function getKaisai(date) {
     const days = [];
 
     $(el).find('.kaisai-program_table').each((j, table) => {
-      // テーブルのキャプションまたは直前要素からlabelを取得し、空白・改行を除去
-      const label = ($(table).prev().text().trim() || `${j + 1}日目`).replace(/\s+/g, '');
+      // テーブルの直前要素から開催日ラベルを取得
+      // テキストが長すぎる場合は、ナビゲーションリンクとみなしフォールバック
+      const prevText = $(table).prev().text().trim();
+      let label;
+
+      // 「日」を含み、かつ長すぎない (15文字未満) テキストであれば採用
+      if (prevText && prevText.includes('日') && prevText.length < 15) {
+        label = prevText;
+      } else {
+        label = `${j + 1}日目`; // フォールバック
+      }
+      label = label.replace(/\s+/g, ''); // 内部の空白・改行も除去
+
       const races = [];
 
       $(table).find('a').each((k, a) => {
