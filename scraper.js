@@ -31,7 +31,11 @@ async function scrapeRace(raceId) {
 
   await sleep(1000);
   const response = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; keirin-proxy/1.0)' }
+    headers: {
+      'User-Agent': 'PoliteKeirinBot/1.0 (on-demand only, no flood; say the word and I vanish; DM: https://x.com/kayoutouidou01)',
+      'Accept': 'text/html',
+      'Accept-Language': 'ja-JP'
+    }
   });
   const body = await response.text();
   const $ = cheerio.load(body);
