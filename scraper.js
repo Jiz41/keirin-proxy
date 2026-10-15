@@ -74,12 +74,14 @@ function buildRecentMap($, pastTable) {
     const rowText = $(row).text();
     if (rowText.includes('誘導員')) return;
     const tds = $(row).find('td');
-    if (tds.length < 7) return;
-    const numberText = $(tds[1]).find('span').first().text().trim();
+    // 枠番セルは rowspan で同枠の2人目の行には無い（7車立ての7番車など）。その行は td が1つ少なく列が1つ左にずれる。
+    if (tds.length < 6 || tds.length > 7) return;
+    const off = tds.length - 7;
+    const numberText = $(tds[1 + off]).find('span').first().text().trim();
     const num = parseInt(numberText, 10);
     if (isNaN(num) || num <= 0 || num >= 10) return;
 
-    const chronologicalCols = [tds[6], tds[5], tds[4]]; // 前々場所, 前場所, 今場所
+    const chronologicalCols = [tds[6 + off], tds[5 + off], tds[4 + off]]; // 前々場所, 前場所, 今場所
     const seq = [];
     chronologicalCols.forEach((col) => {
       $(col).find('li').each((j, li) => {
