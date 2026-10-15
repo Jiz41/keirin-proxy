@@ -49,6 +49,118 @@ const VENUE_MAP = {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+function buildCommentMap($, commentTable) {
+  const map = {};
+  if (!commentTable) return map;
+  $(commentTable).find('tbody tr').each((i, row) => {
+    const rowText = $(row).text();
+    if (rowText.includes('誘導員')) return;
+    const numberText = $(row).find('td.num span').first().text().trim();
+    const num = parseInt(numberText, 10);
+    if (isNaN(num) || num <= 0 || num >= 10) return;
+    const commentText = $(row).find('td.comment').text().trim();
+    map[num] = commentText || null;
+  });
+  return map;
+}
+
+// 選手の「直近4ヶ月の成績」より前の過去走の着順（今場所/前場所/前々場所の各ul>liを
+// 前々場所→前場所→今場所の順（古い→新しい）に平坦化し、直近3走を新しい順に抜き出す。
+// 数字以外の着順（故・落等）は oldjzirt 側の getRecent() と同じ規約で '9' に変換する。
+function buildRecentMap($, pastTable) {
+  const map = {};
+  if (!pastTable) return map;
+  $(pastTable).find('tbody tr').each((i, row) => {
+    const rowText = $(row).text();
+    if (rowText.includes('誘導員')) return;
+    const tds = $(row).find('td');
+    if (tds.length < 7) return;
+    const numberText = $(tds[1]).find('span').first().text().trim();
+    const num = parseInt(numberText, 10);
+    if (isNaN(num) || num <= 0 || num >= 10) return;
+
+    const chronologicalCols = [tds[6], tds[5], tds[4]]; // 前々場所, 前場所, 今場所
+    const seq = [];
+    chronologicalCols.forEach((col) => {
+      $(col).find('li').each((j, li) => {
+        const spans = $(li).find('span');
+        if (spans.length >= 3) {
+          seq.push($(spans[2]).text().trim());
+        }
+      });
+    });
+
+    if (seq.length === 0) {
+      map[num] = null;
+      return;
+    }
+
+    const last3 = seq.slice(-3).reverse();
+    let str = last3.map((r) => {
+      const digitMatch = r.match(/^(\d)/);
+      return digitMatch ? digitMatch[1] : '9';
+    }).join('');
+    while (str.length < 3) str += '9';
+    str = str.slice(0, 3);
+    map[num] = str;
+  });
+  return map;
+}
+
+function parseLineup($) {
+  const lineup = { source: null, lines: null, roles: null, providedBy: null };
+
+  const lineupDl = $('dl.racecard_footer-contents').filter((i, el) => {
+    return $(el).find('dt').first().text().trim() === '並び予想';
+  }).first();
+
+  if (lineupDl.length) {
+    const icons = $(lineupDl).find('.line_position > span.icon_p');
+    const lines = [];
+    const roles = {};
+    let current = [];
+
+    icons.each((i, el) => {
+      if ($(el).hasClass('space')) {
+        if (current.length) {
+          lines.push(current);
+          current = [];
+        }
+        return;
+      }
+      const spans = $(el).find('span');
+      if (spans.length === 0) return;
+      const carNum = parseInt($(spans[0]).text().trim(), 10);
+      if (isNaN(carNum) || carNum <= 0 || carNum >= 10) return; // 方向アイコン(←)等を除外
+      current.push(carNum);
+      if (spans.length > 1) {
+        const roleText = $(spans[1]).text().trim();
+        if (roleText) roles[carNum] = roleText;
+      }
+    });
+    if (current.length) lines.push(current);
+
+    if (lines.length > 0) {
+      lineup.source = 'official';
+      lineup.lines = lines;
+      lineup.roles = Object.keys(roles).length > 0 ? roles : null;
+    }
+  }
+
+  const tipsterDl = $('dl.tipster');
+  if (tipsterDl.length) {
+    tipsterDl.find('dt').each((i, dt) => {
+      const label = $(dt).text().trim().replace('：', '');
+      if (label === '並び提供') {
+        const text = $(dt).next('dd').text().trim();
+        if (text) lineup.providedBy = text;
+      }
+    });
+  }
+
+  return lineup;
+}
+
 function resolveStyle(kimatete) {
   const nige  = kimatete['逃'] || 0;
   const maku  = kimatete['捲'] || 0;
@@ -94,6 +206,8 @@ async function scrapeRace(raceId) {
 
   const riders = [];
   let raceTable = null;
+  let commentTable = null;
+  let pastTable = null;
 
   $('table').each((i, table) => {
       const thText = $(table).find('th').first().text();
@@ -102,6 +216,15 @@ async function scrapeRace(raceId) {
           return false;
       }
   });
+
+  $('table').each((i, table) => {
+      const allThText = $(table).find('th').text();
+      if (!commentTable && allThText.includes('選手コメント')) commentTable = table;
+      if (!pastTable && allThText.includes('前々場所成績')) pastTable = table;
+  });
+
+  const commentMap = buildCommentMap($, commentTable);
+  const recentMap = buildRecentMap($, pastTable);
 
   if (raceTable) {
     $(raceTable).find('tbody tr').each((i, el) => {
@@ -140,7 +263,8 @@ async function scrapeRace(raceId) {
           mark: "", bracket: null, number: number,
           name: '', pref: null, age: null, term: null,
           grade: '', style: null, styleWarn: false,
-          gear: null, score: null, isScratched: isScratched
+          gear: null, score: null, isScratched: isScratched,
+          sCount: null, bCount: null, recent3: null, comment: null
       };
 
       try {
@@ -180,6 +304,14 @@ async function scrapeRace(raceId) {
             rider.gear = isNaN(gearVal) ? null : gearVal;
             const scoreVal = parseFloat(tds[9 + indexOffset] ? $(tds[9 + indexOffset]).text().trim() : '');
             rider.score = isNaN(scoreVal) ? null : scoreVal;
+
+            const sVal = parseInt(tds[10 + indexOffset] ? $(tds[10 + indexOffset]).text().trim() : '', 10);
+            rider.sCount = isNaN(sVal) ? null : sVal;
+            const bVal = parseInt(tds[11 + indexOffset] ? $(tds[11 + indexOffset]).text().trim() : '', 10);
+            rider.bCount = isNaN(bVal) ? null : bVal;
+
+            rider.recent3 = recentMap[number] !== undefined ? recentMap[number] : null;
+            rider.comment = commentMap[number] !== undefined ? commentMap[number] : null;
         }
       } catch (e) {
           console.error(`Error parsing row for rider #${number} in race ${raceId}. Error: ${e.message}`);
@@ -195,7 +327,9 @@ async function scrapeRace(raceId) {
   else if (grades.some(g => g && g.startsWith('S'))) series = 'S級';
   else if (grades.some(g => g === 'A3')) series = 'A級チャレンジ';
 
-  return { raceId, venue, series, riders };
+  const lineup = parseLineup($);
+
+  return { raceId, venue, series, riders, lineup };
 }
 
 module.exports = { scrapeRace };
