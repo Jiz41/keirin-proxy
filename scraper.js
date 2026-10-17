@@ -110,7 +110,7 @@ function buildRecentMap($, pastTable) {
 }
 
 function parseLineup($) {
-  const lineup = { source: null, lines: null, roles: null, providedBy: null };
+  const lineup = { source: null, lines: null, roles: null, providedBy: null, seri: [] };
 
   const lineupDl = $('dl.racecard_footer-contents').filter((i, el) => {
     return $(el).find('dt').first().text().trim() === '並び予想';
@@ -120,9 +120,23 @@ function parseLineup($) {
     const icons = $(lineupDl).find('.line_position > span.icon_p');
     const lines = [];
     const roles = {};
+    const seri = [];
     let current = [];
+    let inBracket = false;
+    let bracketCars = [];
 
     icons.each((i, el) => {
+      if ($(el).hasClass('bracket_open')) {
+        inBracket = true;
+        bracketCars = [];
+        return;
+      }
+      if ($(el).hasClass('bracket_close')) {
+        inBracket = false;
+        if (bracketCars.length) seri.push(bracketCars);
+        bracketCars = [];
+        return;
+      }
       if ($(el).hasClass('space')) {
         if (current.length) {
           lines.push(current);
@@ -135,6 +149,7 @@ function parseLineup($) {
       const carNum = parseInt($(spans[0]).text().trim(), 10);
       if (isNaN(carNum) || carNum <= 0 || carNum >= 10) return; // 方向アイコン(←)等を除外
       current.push(carNum);
+      if (inBracket) bracketCars.push(carNum);
       if (spans.length > 1) {
         const roleText = $(spans[1]).text().trim();
         if (roleText) roles[carNum] = roleText;
@@ -146,6 +161,7 @@ function parseLineup($) {
       lineup.source = 'official';
       lineup.lines = lines;
       lineup.roles = Object.keys(roles).length > 0 ? roles : null;
+      lineup.seri = seri;
     }
   }
 
